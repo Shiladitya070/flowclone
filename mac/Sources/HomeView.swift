@@ -268,9 +268,10 @@ private struct HomeHistoryRow: View {
                     actions
                         .opacity(hovering ? 1 : 0)
                 }
+                // Not `.textSelection(.enabled)`: on macOS 27 selectable Text inside this LazyVStack
+                // renders upside down. Copy is available from the row actions and context menu.
                 Text(entry.text)
                     .lineLimit(4)
-                    .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(metaLine)
                     .font(.caption)
