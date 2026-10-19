@@ -1,4 +1,5 @@
 import AppKit
+import os
 
 /// The dictation state machine: key gestures → record → transcribe → insert.
 ///
@@ -39,6 +40,7 @@ final class Dictation {
         self.config = config
         recorder.onLevel = { [weak self] in self?.overlay.level = $0 }
         recorder.onInterrupted = { [weak self] in
+            Log.d("audio input lost mid-recording; stopping")
             // Mic route changed mid-recording (e.g. AirPods): keep what we have.
             if case .recording = self?.phase { self?.stop() }
         }
@@ -47,6 +49,7 @@ final class Dictation {
     // MARK: Key gestures
 
     func trigger(_ down: Bool) {
+        Log.d("key \(down ? "down" : "up") phase=\(phase) pendingTap=\(pendingTap != nil)")
         if down {
             if let tap = pendingTap { // second tap → hands-free
                 tap.cancel()
@@ -100,6 +103,7 @@ final class Dictation {
         do {
             try recorder.start(deviceUID: config.micUID)
         } catch {
+            Log.d("recorder.start failed: \(error)")
             overlay.error("Mic error: \(error.localizedDescription)")
             return
         }
@@ -121,6 +125,7 @@ final class Dictation {
         pendingTap = nil
         let (pcm, seconds, peak) = recorder.stop()
         ducker.restore()
+        Log.d(String(format: "stop: %.2fs audio, peak %.4f", seconds, peak))
         guard seconds >= 0.35 else { phase = .idle; overlay.hide(); return }
         guard peak > 0.004 else { phase = .idle; overlay.message("No speech detected"); return }
         if config.sounds { play("Pop", volume: 0.25) }
@@ -129,6 +134,7 @@ final class Dictation {
     }
 
     func cancel(feedback: Bool) {
+        Log.d("cancel feedback=\(feedback) phase=\(phase)")
         pendingTap?.cancel()
         pendingTap = nil
         switch phase {
@@ -284,4 +290,11 @@ final class Dictation {
             try? fm.removeItem(at: Config.recordingsDir.appendingPathComponent(base + ".out.txt"))
         }
     }
+}
+
+/// Diagnostics (public, not redacted). View with:
+///   /usr/bin/log stream --predicate 'subsystem == "com.flowclone.app"'
+enum Log {
+    private static let logger = Logger(subsystem: "com.flowclone.app", category: "dictation")
+    static func d(_ message: String) { logger.log("\(message, privacy: .public)") }
 }

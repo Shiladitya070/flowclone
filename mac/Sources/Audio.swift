@@ -146,7 +146,35 @@ final class Recorder {
         configObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: eng, queue: .main
         ) { [weak self] _ in
-            self?.onInterrupted?()
+            self?.handleConfigurationChange()
+        }
+    }
+
+    /// AVAudioEngine posts a configuration change right after starting (it builds its default-device
+    /// aggregate), and again when the route changes (AirPods connect/disconnect). Either way the engine
+    /// has stopped: reinstall the tap for the current input format and restart, keeping what was
+    /// recorded so far. Only if that fails does the recording end.
+    private func handleConfigurationChange() {
+        guard let eng = engine else { return }
+        Log.d("audio configuration changed; restarting input")
+        let input = eng.inputNode
+        input.removeTap(onBus: 0)
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, let conv = PCMConverter(from: format) else {
+            onInterrupted?()
+            return
+        }
+        input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
+            self?.process(buffer, with: conv)
+        }
+        do {
+            if !eng.isRunning {
+                eng.prepare()
+                try eng.start()
+            }
+        } catch {
+            Log.d("restart after configuration change failed: \(error)")
+            onInterrupted?()
         }
     }
 
