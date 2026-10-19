@@ -23,6 +23,7 @@ else
     -o "$APP/Contents/MacOS/FlowClone" Sources/*.swift
 fi
 cp Info.plist "$APP/Contents/Info.plist"
+mkdir -p "$APP/Contents/Resources" && cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 SIGN_IDENTITY="${SIGN_ID:-}"
 if [ -z "$SIGN_IDENTITY" ]; then

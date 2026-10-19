@@ -42,22 +42,32 @@ final class HubActions {
 // MARK: Shared look
 
 enum Theme {
-    /// Warm off-white in light mode, near-black in dark mode.
+    // Brand: saffron orange on warm paper (light) / warm espresso (dark), matching the website.
+    static let orangeNS = NSColor(red: 1.0, green: 0.42, blue: 0.10, alpha: 1)  // #FF6B1A
+    static let accent = Color(nsColor: orangeNS)
+    /// Soft orange tint for selected states and badges.
+    static let accentSoft = Color(nsColor: NSColor(name: nil) { a in
+        dark(a) ? NSColor(red: 1.0, green: 0.42, blue: 0.10, alpha: 0.18) : NSColor(red: 1.0, green: 0.886, blue: 0.80, alpha: 1)
+    })
     static let background = Color(nsColor: NSColor(name: nil) { a in
-        a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(white: 0.11, alpha: 1) : NSColor(red: 0.976, green: 0.969, blue: 0.953, alpha: 1)
+        dark(a) ? NSColor(red: 0.122, green: 0.086, blue: 0.067, alpha: 1)    // #1F1611
+                : NSColor(red: 1.0, green: 0.973, blue: 0.941, alpha: 1)       // #FFF8F0
     })
     static let sidebar = Color(nsColor: NSColor(name: nil) { a in
-        a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(white: 0.085, alpha: 1) : NSColor(red: 0.949, green: 0.937, blue: 0.914, alpha: 1)
+        dark(a) ? NSColor(red: 0.090, green: 0.063, blue: 0.047, alpha: 1)    // #17100C
+                : NSColor(red: 0.984, green: 0.937, blue: 0.890, alpha: 1)     // #FBEFE3
     })
     static let card = Color(nsColor: NSColor(name: nil) { a in
-        a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? NSColor(white: 0.16, alpha: 1) : .white
+        dark(a) ? NSColor(red: 0.169, green: 0.122, blue: 0.094, alpha: 1)    // #2B1F18
+                : .white
     })
-    static let border = Color.primary.opacity(0.08)
-    static let accent = Color(red: 0.42, green: 0.33, blue: 0.93)
+    static let border = Color(nsColor: NSColor(name: nil) { a in
+        dark(a) ? NSColor(white: 1, alpha: 0.08) : NSColor(red: 0.918, green: 0.859, blue: 0.80, alpha: 1)  // #EADBCC
+    })
 
-    static func title(_ size: CGFloat = 30) -> Font { .system(size: size, weight: .semibold, design: .serif) }
+    private static func dark(_ a: NSAppearance) -> Bool { a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua }
+
+    static func title(_ size: CGFloat = 30) -> Font { .system(size: size, weight: .bold) }
 }
 
 /// White rounded card used across the Hub.
@@ -149,6 +159,7 @@ struct HubView: View {
             .background(Theme.background)
         }
         .frame(minWidth: 820, minHeight: 560)
+        .tint(Theme.accent)
     }
 
     @ViewBuilder private var content: some View {
@@ -163,11 +174,13 @@ struct HubView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
+            HStack(spacing: 9) {
                 Image(systemName: "waveform")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Theme.accent)
-                Text("FlowClone").font(.system(size: 17, weight: .semibold, design: .serif))
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 26, height: 26)
+                    .background(Theme.accent, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                Text("FlowClone").font(.system(size: 17, weight: .bold))
             }
             .padding(.horizontal, 10)
             .padding(.top, 44) // clears the traffic lights
@@ -202,7 +215,8 @@ struct HubView: View {
                 .fontWeight(selected ? .semibold : .regular)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 10).padding(.vertical, 7)
-                .background(selected ? Theme.card : .clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .foregroundStyle(selected ? Theme.accent : .primary)
+                .background(selected ? Theme.accentSoft : .clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .strokeBorder(selected ? Theme.border : .clear))
                 .contentShape(Rectangle())

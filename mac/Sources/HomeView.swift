@@ -200,7 +200,7 @@ private struct HomeStatCard: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Theme.accent)
                 Text(value)
-                    .font(.system(size: 26, weight: .semibold, design: .serif))
+                    .font(.system(size: 26, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text(caption)

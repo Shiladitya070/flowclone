@@ -219,7 +219,7 @@ fileprivate final class PillView: NSView {
 
         if mode == .success {
             icon.image = symbol("checkmark")
-            icon.contentTintColor = .white
+            icon.contentTintColor = Theme.orangeNS
         } else if mode == .error {
             icon.image = symbol("exclamationmark.triangle.fill")
             icon.contentTintColor = .systemYellow
@@ -389,7 +389,7 @@ fileprivate final class WaveformView: NSView {
 
     private let bars: [CALayer] = (0..<WaveformView.count).map { _ in
         let layer = CALayer()
-        layer.backgroundColor = NSColor.white.cgColor
+        layer.backgroundColor = Theme.orangeNS.cgColor
         layer.cornerRadius = WaveformView.barWidth / 2
         return layer
     }

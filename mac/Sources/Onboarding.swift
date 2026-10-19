@@ -48,7 +48,7 @@ final class OnboardingWindow {
         let root = OnboardingView(model: model, onDone: { [weak self] in
             self?.window?.close()
         })
-        let hosting = NSHostingController(rootView: root)
+        let hosting = NSHostingController(rootView: root.tint(Theme.accent))
         let w = NSWindow(contentViewController: hosting)
         w.title = "Set up FlowClone"
         w.styleMask = [.titled, .closable]
