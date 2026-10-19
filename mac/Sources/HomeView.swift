@@ -240,7 +240,7 @@ private struct HomeHistoryRow: View {
     private var canRetry: Bool { entry.audioFile != nil }
     /// Hidden when the entry was already transcribed with Gemini Flash (not Flash-Lite).
     private var offersFlashRetry: Bool {
-        !(entry.model.contains("flash") && !entry.model.contains("flash-lite"))
+        !Config.modelLocked && !(entry.model.contains("flash") && !entry.model.contains("flash-lite"))
     }
     private var retryHelp: String {
         canRetry ? "Retry transcription" : "Audio wasn't kept for this dictation"

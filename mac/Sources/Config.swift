@@ -13,6 +13,15 @@ struct Config {
     var sounds: Bool
     var micUID: String
 
+    /// Release builds for friends are compiled with `-D LOCKED_MODEL`: the model is fixed to Flash-Lite
+    /// so a shared, capped key can't be drained by the ~18× pricier Flash.
+    #if LOCKED_MODEL
+    static let modelLocked = true
+    #else
+    static let modelLocked = false
+    #endif
+    static let lockedModel = "google/gemini-3.5-flash-lite"
+
     static let dir = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/FlowClone")
     static var file: URL { dir.appendingPathComponent("config.env") }
@@ -41,7 +50,7 @@ struct Config {
         }
         return Config(
             apiKey: get("OPENROUTER_API_KEY", ""),
-            model: get("MODEL", "google/gemini-3.5-flash-lite"),
+            model: modelLocked ? lockedModel : get("MODEL", lockedModel),
             hotkey: get("HOTKEY", "fn"),
             dictionary: get("DICTIONARY", "").split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty },

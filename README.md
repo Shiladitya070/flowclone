@@ -17,10 +17,27 @@ It's done its job as an experiment. **Take it, rebuild it, make it yours.**
 
 ## Install
 
-1. Download `FlowClone.zip` from [Releases](../../releases/latest), unzip it, and move `FlowClone.app` to Applications.
-2. The app isn't notarized, so right-click it and choose **Open**, or go to System Settings › Privacy & Security › **Open Anyway**.
-3. The Setup Guide asks for Microphone and Accessibility access and your OpenRouter API key.
-4. Recommended: System Settings › Keyboard › "Press 🌐 key to" → **Do Nothing**.
+One line in Terminal (no "can't be opened" warning):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Shiladitya070/flowclone/main/site/install.sh | bash
+```
+
+Or download `FlowClone.zip` from [Releases](../../releases/latest), move the app to Applications, and use System Settings › Privacy & Security › **Open Anyway**. The Setup Guide then asks for Microphone and Accessibility access and your OpenRouter API key. Recommended: System Settings › Keyboard › "Press 🌐 key to" → **Do Nothing**.
+
+## Inviting friends (they don't need an OpenRouter account)
+
+Give each friend their own key with a spending cap, created from your OpenRouter **management key** (put `OPENROUTER_MANAGEMENT_KEY=…` in `.env`):
+
+```bash
+node scripts/invite.mjs create "Riya"            # $2.50 cap by default; --limit 5 to change
+node scripts/invite.mjs list                     # credit used per friend
+node scripts/invite.mjs revoke "Riya"
+```
+
+`create` prints a message to send. It contains a one-line install command with their key built in, plus a `flowclone://setup?key=…` link for people who already have the app. Each friend's audio goes straight from their Mac to OpenRouter with zero data retention. You only see credit used per key, never content, as long as input/output logging stays **off** in your OpenRouter privacy settings.
+
+Release builds (`mac/package.sh`) are locked to Gemini 3.5 Flash-Lite, so an invite's credit can't be drained by the ~18× pricier Flash. `LOCK_MODEL=0 mac/package.sh` builds an unlocked release.
 
 ## Build from source
 

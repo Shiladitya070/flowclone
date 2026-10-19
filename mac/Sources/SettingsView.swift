@@ -80,16 +80,22 @@ struct SettingsView: View {
             }
 
             section("Transcription") {
-                row("Model", "Trades speed and cost against accuracy.") {
-                    Picker("", selection: bind($model, key: "MODEL") { $0 }) {
-                        ForEach(Self.models, id: \.id) { Text($0.label).tag($0.id) }
-                        if !Self.models.contains(where: { $0.id == model }) {
-                            Text(model).tag(model)
-                        }
+                if Config.modelLocked {
+                    row("Model", "Fixed in this build so your invite credit lasts.") {
+                        Text("Gemini 3.5 Flash-Lite").foregroundStyle(.secondary)
                     }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .fixedSize()
+                } else {
+                    row("Model", "Trades speed and cost against accuracy.") {
+                        Picker("", selection: bind($model, key: "MODEL") { $0 }) {
+                            ForEach(Self.models, id: \.id) { Text($0.label).tag($0.id) }
+                            if !Self.models.contains(where: { $0.id == model }) {
+                                Text(model).tag(model)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .fixedSize()
+                    }
                 }
                 divider
                 apiKeyBlock

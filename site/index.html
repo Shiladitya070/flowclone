@@ -95,6 +95,32 @@
   .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
   .fineprint { margin-top: 14px; font-size: 13.5px; color: var(--muted); }
 
+  /* One-line install */
+  .oneliner {
+    display: flex; align-items: center; gap: 10px; max-width: 640px; margin: 22px auto 0;
+    background: var(--ink); color: var(--cream); border-radius: 12px; padding: 8px 8px 8px 16px; text-align: left;
+  }
+  .oneliner code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: 13.5px; scrollbar-width: none; }
+  .oneliner code::-webkit-scrollbar { display: none; }
+  .oneliner .p { color: var(--orange); user-select: none; }
+  .copy {
+    flex: none; border: 0; border-radius: 8px; padding: 8px 12px; background: var(--lilac); color: var(--ink);
+    font: 600 13px var(--sans); cursor: pointer;
+  }
+  .oneliner-note { margin-top: 8px; font-size: 13px; color: var(--muted); }
+
+  /* Privacy */
+  .privacy { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 44px; }
+  .privacy .card { background: #fff; border: 1.5px solid var(--ink); border-radius: var(--radius); padding: 24px; }
+  .privacy .card h3 { margin: 0 0 12px; font-size: 18px; display: flex; gap: 10px; align-items: center; }
+  .privacy .card ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 15px; }
+  .privacy .card li { margin-bottom: 7px; }
+  .privacy .wide { grid-column: 1 / -1; background: var(--lilac); }
+  .flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 600; font-size: 15px; }
+  .flow span.node { background: #fff; border: 1.5px solid var(--ink); border-radius: 999px; padding: 6px 14px; }
+  .flow span.arrow { color: var(--ink-2); }
+  .flow span.no { background: var(--pink); text-decoration: line-through; }
+
   /* Demo */
   .demo { position: relative; max-width: 760px; margin: 52px auto 0; }
   .window {
@@ -238,7 +264,7 @@
     .steps { grid-template-columns: 1fr 1fr; }
     .stats { grid-template-columns: 1fr 1fr; }
     .features { grid-template-columns: 1fr 1fr; }
-    .learned { grid-template-columns: minmax(0, 1fr); }
+    .learned, .privacy { grid-template-columns: minmax(0, 1fr); }
     .nav-links a:not(.btn) { display: none; }
   }
   @media (max-width: 560px) {
@@ -277,6 +303,7 @@
       <div class="nav-links">
         <a href="#story">Story</a>
         <a href="#how">How it works</a>
+        <a href="#privacy">Privacy</a>
         <a href="#cost">Cost</a>
         <a href="#faq">FAQ</a>
         <a href="#" data-link="github">GitHub</a>
@@ -306,7 +333,12 @@
           View on GitHub
         </a>
       </div>
-      <div class="fineprint">Free &amp; open source · macOS 14+ · bring your own OpenRouter key</div>
+      <div class="oneliner">
+        <code><span class="p">$ </span><span id="install-cmd">curl -fsSL https://raw.githubusercontent.com/Shiladitya070/flowclone/main/site/install.sh | bash</span></code>
+        <button class="copy" type="button" data-copy="install-cmd">Copy</button>
+      </div>
+      <div class="oneliner-note">Or install from Terminal in one line. No "can't be opened" warning. Got an invite? Paste the line from your invite instead.</div>
+      <div class="fineprint">Free &amp; open source · macOS 14+ · Apple Silicon &amp; Intel · bring your own OpenRouter key</div>
 
       <!-- Live demo -->
       <div class="demo" aria-label="Animated demo: dictating a mixed-language message into a chat app">
@@ -421,6 +453,48 @@
     </div>
   </section>
 
+  <!-- Privacy -->
+  <section id="privacy" style="padding-top:0">
+    <div class="wrap">
+      <div class="reveal">
+        <div class="eyebrow">Privacy</div>
+        <h2 class="section-title">Your words <em>stay yours.</em></h2>
+        <p class="section-lede">No accounts, no analytics, no server of mine in the middle. Here's exactly what happens to your voice.</p>
+      </div>
+      <div class="privacy">
+        <div class="card wide reveal">
+          <h3>Where your audio goes</h3>
+          <div class="flow">
+            <span class="node">Your Mac</span><span class="arrow">→</span>
+            <span class="node">OpenRouter</span><span class="arrow">→</span>
+            <span class="node">Google Gemini (zero retention)</span><span class="arrow">→</span>
+            <span class="node">back to your Mac</span>
+            <span class="node no">my server</span>
+          </div>
+        </div>
+        <div class="card reveal">
+          <h3>🔒 What's protected</h3>
+          <ul>
+            <li>Every request requires <strong>zero data retention</strong>: providers that don't store your audio or train on it.</li>
+            <li>History, recordings, dictionary and snippets stay in one folder on <strong>your Mac</strong>. Delete anytime in Settings.</li>
+            <li>No analytics or tracking. The only network calls are the transcription itself.</li>
+            <li>Password fields are never read. Sending cursor context can be switched off.</li>
+          </ul>
+        </div>
+        <div class="card reveal">
+          <h3>👀 If a friend invited you</h3>
+          <ul>
+            <li>You get <strong>your own key</strong> with a small spending cap, not a shared one.</li>
+            <li>Your friend can see <strong>how much credit you've used</strong>, and that's all. They never see what you said.</li>
+            <li>Your audio never passes through their computer or any server of theirs.</li>
+            <li>Want full control? Paste your own OpenRouter key in Settings anytime.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="note reveal">Don't take my word for it: the app is open source, and every network call lives in one file (<code>Transcriber.swift</code>).</p>
+    </div>
+  </section>
+
   <!-- Cost -->
   <section id="cost" style="padding-top:0">
     <div class="wrap cost-grid">
@@ -487,8 +561,9 @@
         <details><summary>Is this Wispr Flow?<span class="plus">+</span></summary><p>No. FlowClone is an independent, unofficial experiment inspired by Wispr Flow. It isn't affiliated with or endorsed by Wispr, and it shares no code with Wispr Flow. If you want the polished product with mobile apps, a notetaker and support, go buy Wispr Flow. It's great.</p></details>
         <details><summary>Is it really free?<span class="plus">+</span></summary><p>The app is free and open source. Transcription runs on your own OpenRouter account, billed per second of audio, typically $0.30–$3 a month. You can see your running cost in the Hub.</p></details>
         <details><summary>Why cloud and not a local model?<span class="plus">+</span></summary><p>Local models are private and free per use, but they keep gigabytes in memory and hit your CPU or GPU every time you speak. FlowClone idles at about 34 MB and 0% CPU, and only uses the network while you're dictating. If you prefer local, the transcriber is a single file to swap out.</p></details>
-        <details><summary>Where does my voice go?<span class="plus">+</span></summary><p>From your Mac to OpenRouter, which routes it to the model provider (Google, for the default model). Nothing goes to me. History, recordings, your dictionary and snippets stay in <code>~/Library/Application Support/FlowClone</code>. You can stop sending cursor context, or stop keeping audio, in Settings.</p></details>
-        <details><summary>macOS says the app "can't be opened". What now?<span class="plus">+</span></summary><p>The download isn't notarized by Apple (that needs a paid developer account). Right-click FlowClone in Applications and choose <strong>Open</strong>, or go to System Settings › Privacy &amp; Security › <strong>Open Anyway</strong>. If you'd rather not trust a download, build it from source in two commands.</p></details>
+        <details><summary>Where does my voice go?<span class="plus">+</span></summary><p>From your Mac to OpenRouter, which routes it only to providers with zero data retention (Google, for the default model). Nothing goes to me. History, recordings, your dictionary and snippets stay in <code>~/Library/Application Support/FlowClone</code>. You can stop sending cursor context, or stop keeping audio, in Settings.</p></details>
+        <details><summary>macOS says the app "can't be opened". What now?<span class="plus">+</span></summary><p>The download isn't notarized by Apple (that needs a paid developer account). The easiest fix is to install with the one-line Terminal command at the top of this page, which skips that warning. If you downloaded the zip, go to System Settings › Privacy &amp; Security › <strong>Open Anyway</strong>. Or build it from source in two commands.</p></details>
+        <details><summary>A friend sent me an invite. Who pays, and what can they see?<span class="plus">+</span></summary><p>Your friend gave you a personal key with a small credit cap (a few dollars covers weeks of daily use). They can see how much of that credit you've used, never your audio or text. When it runs out, add your own OpenRouter key in Settings and keep going.</p></details>
         <details><summary>Which languages work?<span class="plus">+</span></summary><p>The default prompt is tuned for English mixed with Hindi and Bengali, written back in Roman script. The underlying model handles dozens of languages. Edit the prompt (no rebuild needed) or swap the model to fit how you speak.</p></details>
         <details><summary>Windows? iPhone?<span class="plus">+</span></summary><p>Not yet. It's macOS only, and that's the fun part for whoever forks it next. The transcription side is a single HTTPS call, so the hard part of a port is the hotkey and the pasting.</p></details>
       </div>
@@ -525,6 +600,14 @@
   document.querySelectorAll('[data-link="download"]').forEach(a => a.href = DOWNLOAD_URL);
   const clone = document.querySelector('[data-text="clone"]');
   if (clone) clone.textContent = "git clone " + GITHUB_REPO;
+
+  // Copy buttons.
+  document.querySelectorAll("[data-copy]").forEach(btn => btn.addEventListener("click", async () => {
+    const text = document.getElementById(btn.dataset.copy).textContent;
+    try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; }
+    catch { btn.textContent = "Select & copy"; }
+    setTimeout(() => btn.textContent = "Copy", 1600);
+  }));
 
   // Reveal sections as they scroll into view.
   const io = "IntersectionObserver" in window ? new IntersectionObserver(entries => {

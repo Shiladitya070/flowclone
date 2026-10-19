@@ -59,7 +59,8 @@ struct Transcriber {
             "model": config.model,
             "temperature": 0,
             "reasoning": ["effort": "minimal"],
-            "provider": ["sort": "latency"],
+            // Only providers with zero data retention that don't use prompts for training.
+            "provider": ["sort": "latency", "zdr": true, "data_collection": "deny"],
             "messages": [
                 ["role": "system", "content": Self.currentPrompt()],
                 ["role": "user", "content": [

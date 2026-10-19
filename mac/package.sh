@@ -8,7 +8,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-UNIVERSAL=1 SIGN_ID="${SIGN_ID:--}" ./build.sh
+# LOCK_MODEL=0 builds an unlocked release (model picker and "Retry with Flash" enabled).
+if [ "${LOCK_MODEL:-1}" = "1" ]; then FLAGS="-D LOCKED_MODEL"; else FLAGS=""; fi
+UNIVERSAL=1 SIGN_ID="${SIGN_ID:--}" SWIFT_FLAGS="$FLAGS" ./build.sh
 
 mkdir -p ../dist
 rm -f ../dist/FlowClone.zip

@@ -39,6 +39,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         startMonitorWhenTrusted()
     }
 
+    /// Invite links: flowclone://setup?key=sk-or-… (made by scripts/invite.mjs).
+    /// Always asks first, so a link from a stranger can't silently swap in their key.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let url = urls.first, url.scheme == "flowclone", url.host == "setup",
+              let key = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "key" })?.value,
+              key.hasPrefix("sk-or-"), key.count > 20 else { return }
+
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Use this invite for FlowClone?"
+        alert.informativeText = "Your dictations will be transcribed with the OpenRouter key from this link (…\(key.suffix(4))). "
+            + "Only accept invite links from someone you trust. Your history stays on this Mac either way."
+        alert.addButton(withTitle: "Use Invite")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        update("OPENROUTER_API_KEY", key)
+        dictation.overlay.message("Invite added — hold Fn to dictate", seconds: 3)
+        if OnboardingWindow.needsSetup { OnboardingWindow.shared.show() }
+    }
+
     /// Clicking the app in Finder/Spotlight/Dock while it's running opens the Hub.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         HubWindow.shared.show()
@@ -114,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             i.state = id == config.model ? .on : .off
             modelMenu.addItem(i)
         }
-        menu.addItem(submenu("Model", modelMenu))
+        if !Config.modelLocked { menu.addItem(submenu("Model", modelMenu)) }
 
         // Hotkey
         let keyMenu = NSMenu()

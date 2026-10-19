@@ -167,7 +167,7 @@ final class Dictation {
         generation += 1
         let gen = generation
         var cfg = config
-        if let model { cfg.model = model }
+        if let model, !Config.modelLocked { cfg.model = model }
         let personalization = Store.shared.personalization(for: ctx)
         let started = Date()
         task = Task { @MainActor [weak self] in

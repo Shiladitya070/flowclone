@@ -13,13 +13,13 @@ SDK=$(env -u SDKROOT xcrun --sdk macosx --show-sdk-path)
 if [ "${UNIVERSAL:-0}" = "1" ]; then
   # Release builds: one binary for Apple Silicon and Intel.
   for ARCH in arm64 x86_64; do
-    swiftc -O -swift-version 5 -sdk "$SDK" -target "$ARCH-apple-macos14.0" \
+    swiftc -O -swift-version 5 -sdk "$SDK" -target "$ARCH-apple-macos14.0" ${SWIFT_FLAGS:-} \
       -o "build/FlowClone-$ARCH" Sources/*.swift
   done
   lipo -create build/FlowClone-arm64 build/FlowClone-x86_64 -output "$APP/Contents/MacOS/FlowClone"
   rm build/FlowClone-arm64 build/FlowClone-x86_64
 else
-  swiftc -O -swift-version 5 -sdk "$SDK" -target "$(uname -m)-apple-macos14.0" \
+  swiftc -O -swift-version 5 -sdk "$SDK" -target "$(uname -m)-apple-macos14.0" ${SWIFT_FLAGS:-} \
     -o "$APP/Contents/MacOS/FlowClone" Sources/*.swift
 fi
 cp Info.plist "$APP/Contents/Info.plist"
