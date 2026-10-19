@@ -10,8 +10,15 @@ whatever app has focus, in Roman script.
 | Esc | Cancel recording or transcription (nothing is typed) |
 | ⌃⌥V | Paste the last transcript again |
 
-Menu bar: microphone picker, model (Flash-Lite / Flash), dictation key, mute other audio while
-dictating, sounds, launch at login, retry last failed dictation, setup guide.
+**Hub window** (menu bar › Open FlowClone…, or click the app in Finder/Spotlight), like Wispr Flow's:
+- **Home**: words dictated, speaking speed, hours saved, streak, cost this month; searchable history
+  with Copy / Retry / Retry with Flash / Delete.
+- **Dictionary**: names and terms always spelled your way.
+- **Snippets**: say "my email" and the full text is typed.
+- **Style**: Formal / Casual / Very casual per app type (personal chats, work chat, email, other).
+- **Settings**: key, mic, model, API key (with Test), sounds, mute, launch at login, data and privacy.
+
+Dictionary, snippets and styles are stored in `personal.json` and sent with each dictation as prompt context.
 
 ```
 Fn down → read focused app + text before cursor (Accessibility) → record mic @16 kHz mono, mute other audio
@@ -90,4 +97,4 @@ For WER (word error rate) scoring across many models, use `node scripts/hinglish
 - No streaming: text appears about 2–3 s after you release the key.
 - Recordings under 0.35 s or near-silent are dropped without calling the API.
 - Cmd+V uses the US key position, so non-QWERTY layouts may need a fix.
-- No command mode, snippets, or per-app style yet (Phase 2 in `docs/roadmap.md`).
+- No command mode or auto-learning from edits yet (see `docs/roadmap.md`).

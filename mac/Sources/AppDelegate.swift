@@ -28,11 +28,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         monitor.onEscape = { [weak self] in self?.dictation.escape() ?? false }
         monitor.onPasteLast = { [weak self] in self?.dictation.pasteLast() }
 
+        HubActions.shared.retry = { [weak self] entry, model in self?.dictation.retry(entry, model: model) ?? false }
+        HubActions.shared.configChanged = { [weak self] in self?.reloadConfig() }
+        HubActions.shared.openSetupGuide = { OnboardingWindow.shared.show() }
+
         if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
             AVCaptureDevice.requestAccess(for: .audio) { _ in }
         }
         if OnboardingWindow.needsSetup { OnboardingWindow.shared.show() }
         startMonitorWhenTrusted()
+    }
+
+    /// Clicking the app in Finder/Spotlight/Dock while it's running opens the Hub.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        HubWindow.shared.show()
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -65,6 +75,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         reloadConfig() // picks up hand edits to config.env (e.g. DICTIONARY)
 
+        menu.addItem(item("Open FlowClone…", #selector(openHub)))
+        menu.addItem(.separator())
         menu.addItem(disabled(statusText()))
         if !dictation.lastText.isEmpty {
             let t = dictation.lastText
@@ -124,6 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(login)
         menu.addItem(.separator())
 
+        menu.addItem(item("Settings…", #selector(openSettings)))
         menu.addItem(item("Setup Guide…", #selector(showOnboarding)))
         menu.addItem(item("Open Config File", #selector(openConfig)))
         menu.addItem(item("Open History", #selector(openHistory)))
@@ -175,6 +188,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func showOnboarding() { OnboardingWindow.shared.show() }
+    @objc private func openHub() { HubWindow.shared.show(.home) }
+    @objc private func openSettings() { HubWindow.shared.show(.settings) }
 
     @objc private func openConfig() {
         if !FileManager.default.fileExists(atPath: Config.file.path) { Config.set("MODEL", config.model) }

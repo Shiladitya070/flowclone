@@ -33,7 +33,7 @@ FlowClone.app (Swift, menu bar, LSUIElement)
 | 8 | **Overlay animations**: spring in/out, live waveform, shimmer while transcribing, success tick | Feels finished | overlay renderer |
 | 9 | Sounds on/off | Preference | `soundEffects` |
 
-## Phase 2: gets smarter
+## Phase 2: gets smarter (10, 11, 13 ✅ done; 12, 14 open)
 
 | # | Feature | Wispr equivalent |
 |---|---|---|

@@ -7,6 +7,8 @@ struct FocusContext {
     var appName = ""
     var bundleID = ""
     var before = ""
+    /// Focused window title, e.g. "Inbox - Gmail" in a browser; used to pick a per-app style.
+    var windowTitle = ""
 
     static let empty = FocusContext()
 
@@ -15,6 +17,18 @@ struct FocusContext {
         let app = NSWorkspace.shared.frontmostApplication
         ctx.appName = app?.localizedName ?? ""
         ctx.bundleID = app?.bundleIdentifier ?? ""
+
+        if let pid = app?.processIdentifier {
+            let axApp = AXUIElementCreateApplication(pid)
+            AXUIElementSetMessagingTimeout(axApp, 0.25)
+            var window: CFTypeRef?
+            var title: CFTypeRef?
+            if AXUIElementCopyAttributeValue(axApp, kAXFocusedWindowAttribute as CFString, &window) == .success,
+               let w = window, CFGetTypeID(w) == AXUIElementGetTypeID(),
+               AXUIElementCopyAttributeValue(w as! AXUIElement, kAXTitleAttribute as CFString, &title) == .success {
+                ctx.windowTitle = title as? String ?? ""
+            }
+        }
 
         let system = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(system, 0.25)

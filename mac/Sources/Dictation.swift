@@ -153,19 +153,24 @@ final class Dictation {
 
     // MARK: Transcription
 
-    private func transcribe(audio: Data, format: String, context ctx: FocusContext, seconds: Double) {
+    /// `paste: false` is used when re-transcribing from the Hub: the result is copied, not typed.
+    private func transcribe(audio: Data, format: String, context ctx: FocusContext, seconds: Double,
+                            model: String? = nil, paste: Bool = true) {
         phase = .transcribing
         overlay.transcribing()
         generation += 1
         let gen = generation
-        let cfg = config
+        var cfg = config
+        if let model { cfg.model = model }
+        let personalization = Store.shared.personalization(for: ctx)
         let started = Date()
         task = Task { @MainActor [weak self] in
             do {
-                let text = try await Transcriber(config: cfg).transcribe(audio: audio, format: format, context: ctx)
+                let text = try await Transcriber(config: cfg).transcribe(audio: audio, format: format, context: ctx,
+                                                                         personalization: personalization)
                 guard let self, gen == self.generation else { return }
                 self.deliver(text, audio: audio, format: format, ctx: ctx, seconds: seconds,
-                             latency: Date().timeIntervalSince(started))
+                             latency: Date().timeIntervalSince(started), model: cfg.model, paste: paste)
             } catch {
                 guard let self, gen == self.generation, !(error is CancellationError) else { return }
                 self.failed(error, audio: audio, format: format, ctx: ctx, seconds: seconds)
@@ -173,21 +178,28 @@ final class Dictation {
         }
     }
 
-    private func deliver(_ text: String, audio: Data, format: String, ctx: FocusContext, seconds: Double, latency: Double) {
+    private func deliver(_ text: String, audio: Data, format: String, ctx: FocusContext, seconds: Double,
+                         latency: Double, model: String, paste: Bool) {
         phase = .idle
         lastFailed = nil
-        if config.saveAudio { Self.saveRecording(audio, format: format, text: text) }
         guard !text.isEmpty else { overlay.message("No speech detected"); return }
 
+        let audioFile = config.saveAudio ? Self.saveRecording(audio, format: format, text: text) : nil
         lastText = text
         lastLatency = (seconds, latency)
         print(String(format: "[%.1fs audio → %.2fs] %@: %@", seconds, latency, ctx.appName, text))
-        History.append([
-            "ts": ISO8601DateFormatter().string(from: Date()), "app": ctx.appName, "model": config.model,
-            "audio_s": (seconds * 10).rounded() / 10, "latency_s": (latency * 100).rounded() / 100, "text": text,
-        ])
+        Store.shared.add(HistoryEntry(
+            id: UUID().uuidString, date: Date(), app: ctx.appName, model: model,
+            audioSeconds: (seconds * 10).rounded() / 10, latency: (latency * 100).rounded() / 100,
+            text: text, audioFile: audioFile))
         onResult?()
-        insert(Paster.spaced(text, after: ctx.before))
+        if paste {
+            insert(Paster.spaced(text, after: ctx.before))
+        } else {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            overlay.message("New transcript copied to clipboard", seconds: 2)
+        }
     }
 
     private func failed(_ error: Error, audio: Data, format: String, ctx: FocusContext, seconds: Double) {
@@ -222,6 +234,19 @@ final class Dictation {
         transcribe(audio: f.audio, format: f.format, context: f.context, seconds: f.seconds)
     }
 
+    /// Hub "Retry": re-transcribes a history entry's saved audio (optionally with another model)
+    /// and copies the result. Returns false if the audio wasn't kept or a dictation is in progress.
+    @discardableResult
+    func retry(_ entry: HistoryEntry, model: String? = nil) -> Bool {
+        guard phase == .idle, let file = entry.audioFile,
+              let audio = try? Data(contentsOf: Config.recordingsDir.appendingPathComponent(file)) else { return false }
+        var ctx = FocusContext.empty
+        ctx.appName = entry.app
+        transcribe(audio: audio, format: (file as NSString).pathExtension, context: ctx,
+                   seconds: entry.audioSeconds, model: model, paste: false)
+        return true
+    }
+
     // MARK: Helpers
 
     private func play(_ name: String, volume: Float) {
@@ -230,14 +255,33 @@ final class Dictation {
         sound.play()
     }
 
-    /// Keeps dictations (and always failures) so they can be replayed with `--transcribe <dir>`.
-    private static func saveRecording(_ audio: Data, format: String, text: String) {
+    /// Keeps dictation audio (and always failures) for Retry and `--transcribe <dir>` replays.
+    /// Returns the audio file name. Only the newest `keepRecordings` files are kept.
+    @discardableResult
+    private static func saveRecording(_ audio: Data, format: String, text: String) -> String? {
         let fm = FileManager.default
         try? fm.createDirectory(at: Config.recordingsDir, withIntermediateDirectories: true)
         let f = DateFormatter()
-        f.dateFormat = "yyyyMMdd-HHmmss"
-        let base = Config.recordingsDir.appendingPathComponent(f.string(from: Date()))
-        try? audio.write(to: base.appendingPathExtension(format))
+        f.dateFormat = "yyyyMMdd-HHmmss-SSS"
+        let name = f.string(from: Date())
+        let base = Config.recordingsDir.appendingPathComponent(name)
+        guard (try? audio.write(to: base.appendingPathExtension(format))) != nil else { return nil }
         try? text.write(to: base.appendingPathExtension("out.txt"), atomically: true, encoding: .utf8)
+        pruneRecordings()
+        return name + "." + format
+    }
+
+    private static let keepRecordings = 300
+
+    private static func pruneRecordings() {
+        let fm = FileManager.default
+        guard let files = try? fm.contentsOfDirectory(atPath: Config.recordingsDir.path) else { return }
+        let audio = files.filter { !$0.hasSuffix(".txt") }.sorted()
+        guard audio.count > keepRecordings else { return }
+        for name in audio.prefix(audio.count - keepRecordings) {
+            let base = (name as NSString).deletingPathExtension
+            try? fm.removeItem(at: Config.recordingsDir.appendingPathComponent(name))
+            try? fm.removeItem(at: Config.recordingsDir.appendingPathComponent(base + ".out.txt"))
+        }
     }
 }

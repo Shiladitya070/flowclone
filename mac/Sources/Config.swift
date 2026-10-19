@@ -46,7 +46,7 @@ struct Config {
             dictionary: get("DICTIONARY", "").split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty },
             sendContext: get("SEND_CONTEXT", "1") != "0",
-            saveAudio: get("SAVE_AUDIO", "0") == "1",
+            saveAudio: get("SAVE_AUDIO", "1") != "0",
             muteAudio: get("MUTE_AUDIO", "1") != "0",
             sounds: get("SOUNDS", "1") != "0",
             micUID: get("MIC", "")

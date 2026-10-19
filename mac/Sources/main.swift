@@ -19,6 +19,7 @@ if args.count >= 3, args[1] == "--transcribe" {
         }
     }
     let wantWav = ProcessInfo.processInfo.environment["FORMAT"] == "wav"
+    let personalization = Store.loadPersonalization()
     let done = DispatchSemaphore(value: 0)
     Task.detached {
         let started = Date()
@@ -30,7 +31,8 @@ if args.count >= 3, args[1] == "--transcribe" {
                     do {
                         let pcm = try PCMConverter.pcmFromFile(file)
                         let (audio, fmt) = wantWav ? (PCMConverter.wav(pcm), "wav") : PCMConverter.encode(pcm)
-                        let text = try await Transcriber(config: config).transcribe(audio: audio, format: fmt, context: .empty)
+                        let text = try await Transcriber(config: config).transcribe(audio: audio, format: fmt, context: .empty,
+                                                                                    personalization: personalization)
                         out += String(format: "   %.1fs audio → %.2fs\n", Double(pcm.count) / 32000, Date().timeIntervalSince(t0))
                         let ref = file.deletingPathExtension().appendingPathExtension("txt")
                         if let r = try? String(contentsOf: ref, encoding: .utf8) { out += "   REF: \(r.trimmingCharacters(in: .whitespacesAndNewlines))\n" }

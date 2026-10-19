@@ -34,7 +34,8 @@ struct Transcriber {
         return systemPrompt
     }
 
-    func transcribe(audio: Data, format: String, context: FocusContext) async throws -> String {
+    func transcribe(audio: Data, format: String, context: FocusContext,
+                    personalization p: Personalization = Personalization()) async throws -> String {
         var notes: [String] = []
         if config.sendContext {
             if !context.appName.isEmpty { notes.append("Target app: \(context.appName)") }
@@ -42,8 +43,15 @@ struct Transcriber {
                 notes.append("Text already before the cursor (continue its style; do not repeat it):\n\"\"\"\(context.before)\"\"\"")
             }
         }
-        if !config.dictionary.isEmpty {
-            notes.append("Spell these names/terms exactly like this: \(config.dictionary.joined(separator: ", "))")
+        if !p.dictionary.isEmpty {
+            notes.append("Spell these names/terms exactly like this: \(p.dictionary.joined(separator: ", "))")
+        }
+        if !p.snippets.isEmpty {
+            let list = p.snippets.map { "\"\($0.trigger)\" → \"\($0.expansion)\"" }.joined(separator: "\n")
+            notes.append("Snippets: when the speaker says one of these trigger phrases, output the expansion text exactly instead of the phrase:\n\(list)")
+        }
+        if let style = p.style {
+            notes.append("Formatting style for this app: \(style.instruction)")
         }
         let userText = notes.isEmpty ? "Transcribe this dictation." : "Context:\n" + notes.joined(separator: "\n") + "\n\nTranscribe this dictation."
 
