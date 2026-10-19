@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlowClone — I didn't want to pay for dictation, so I built it</title>
+<meta name="description" content="An open experiment: a Wispr Flow–style dictation app for macOS, built with Claude. Hold Fn, speak English, Hindi or Bengali, and polished text appears wherever your cursor is. Cloud transcription through your own OpenRouter key.">
+<meta property="og:title" content="FlowClone — dictation for Mac, built in a day with Claude">
+<meta property="og:description" content="Hold Fn, speak in any mix of English, Hindi and Bengali, get clean text in any app. ~2 s, ~$1/month, open source.">
+<meta name="theme-color" content="#FFFFEB">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231A1A1A'/%3E%3Cg fill='%23F0D7FF'%3E%3Crect x='7' y='12' width='3' height='8' rx='1.5'/%3E%3Crect x='12' y='8' width='3' height='16' rx='1.5'/%3E%3Crect x='17' y='5' width='3' height='22' rx='1.5'/%3E%3Crect x='22' y='10' width='3' height='12' rx='1.5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FFFFEB;
+    --sand: #E4E4D0;
+    --sand-2: #F2F2DC;
+    --ink: #1A1A1A;
+    --ink-2: #4A4A44;
+    --muted: #77776E;
+    --lilac: #F0D7FF;
+    --green: #034F46;
+    --orange: #FFA946;
+    --coral: #FF6C4C;
+    --pink: #FFBCF2;
+    --serif: "EB Garamond", Georgia, "Times New Roman", serif;
+    --sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --radius: 14px;
+    --max: 1120px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: inherit; }
+  img, svg { display: block; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+  .serif { font-family: var(--serif); font-weight: 400; letter-spacing: -0.01em; }
+  h1 em, h2 em, .it { font-family: var(--serif); font-style: italic; }
+  .eyebrow {
+    font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-2); font-weight: 500;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 22px; border-radius: 12px; border: 2px solid var(--ink);
+    font: 600 16px/1 var(--sans); text-decoration: none; cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 0 var(--ink); }
+  .btn:active { transform: translateY(0); box-shadow: none; }
+  .btn-primary { background: var(--lilac); }
+  .btn-ghost { background: transparent; }
+  .btn-ghost:hover { background: var(--sand-2); }
+  .btn svg { width: 18px; height: 18px; }
+
+  /* Banner + nav */
+  .banner {
+    background: var(--green); color: var(--cream); text-align: center;
+    font-size: 14px; font-weight: 500; padding: 10px 16px;
+  }
+  .banner a { color: var(--cream); text-underline-offset: 3px; }
+  .nav-shell { position: sticky; top: 0; z-index: 20; padding: 10px 0; background: linear-gradient(var(--cream) 70%, transparent); }
+  .nav {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    border: 1.5px solid var(--sand); background: var(--cream); border-radius: 14px; padding: 8px 8px 8px 16px;
+  }
+  .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 19px; text-decoration: none; }
+  .logo-mark { display: flex; align-items: center; gap: 2.5px; height: 20px; }
+  .logo-mark i { display: block; width: 3.5px; border-radius: 2px; background: var(--ink); }
+  .nav-links { display: flex; align-items: center; gap: 22px; font-size: 15px; color: var(--ink-2); }
+  .nav-links a { text-decoration: none; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav .btn { padding: 10px 16px; font-size: 15px; }
+
+  /* Hero */
+  .hero { text-align: center; padding: 56px 0 24px; }
+  .hero h1 {
+    font-family: var(--serif); font-weight: 400; font-size: clamp(52px, 9vw, 104px);
+    line-height: 0.95; letter-spacing: -0.025em; margin: 18px 0 22px;
+  }
+  .hero h1 em { display: block; }
+  .hero p.lede { max-width: 600px; margin: 0 auto; font-size: 19px; color: var(--ink-2); }
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+  .fineprint { margin-top: 14px; font-size: 13.5px; color: var(--muted); }
+
+  /* Demo */
+  .demo { position: relative; max-width: 760px; margin: 52px auto 0; }
+  .window {
+    background: #fff; border: 2px solid var(--ink); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 6px 0 var(--ink); text-align: left;
+  }
+  .window-bar { display: flex; align-items: center; gap: 7px; padding: 12px 14px; border-bottom: 1.5px solid var(--sand); background: var(--sand-2); }
+  .window-bar span { width: 11px; height: 11px; border-radius: 50%; background: var(--sand); border: 1px solid #c9c9b2; }
+  .window-bar b { margin-left: 10px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .chat { padding: 22px 22px 12px; min-height: 190px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 78%; padding: 10px 14px; border-radius: 14px; font-size: 15.5px; }
+  .msg.them { background: var(--sand-2); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .msg.me { background: var(--green); color: var(--cream); align-self: flex-end; border-bottom-right-radius: 4px; }
+  .composer {
+    margin: 4px 16px 18px; border: 1.5px solid var(--sand); border-radius: 12px; padding: 12px 14px;
+    min-height: 74px; font-size: 16px; color: var(--ink);
+  }
+  .composer .placeholder { color: var(--muted); }
+  .caret { display: inline-block; width: 2px; height: 1.1em; background: var(--ink); vertical-align: -3px; margin-left: 1px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .lang-tag { display: block; margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+  .pill {
+    position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 18px;
+    background: #121212; color: #fff; border-radius: 999px; font-size: 13.5px; font-weight: 500;
+    box-shadow: 0 10px 30px rgba(0,0,0,.25); transition: opacity .25s ease, transform .25s ease;
+    white-space: nowrap;
+  }
+  .pill.hidden { opacity: 0; transform: translateX(-50%) scale(.85); }
+  .bars { display: flex; align-items: center; gap: 3px; height: 22px; }
+  .bars i { width: 3px; border-radius: 2px; background: #fff; height: 4px; transition: height .08s linear; }
+  .pill .check { display: none; font-size: 16px; }
+  .pill.done .bars { display: none; }
+  .pill.done .check { display: inline; }
+  .keycap {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 26px; padding: 0 7px;
+    border: 1.5px solid var(--ink); border-bottom-width: 3px; border-radius: 7px; font: 600 13px var(--sans); background: #fff;
+  }
+  .hold-hint { margin-top: 48px; font-size: 14px; color: var(--muted); display: flex; gap: 8px; align-items: center; justify-content: center; }
+
+  /* Sections */
+  section { padding: 96px 0; }
+  .section-title { font-family: var(--serif); font-weight: 400; font-size: clamp(38px, 5.4vw, 64px); line-height: 1.02; letter-spacing: -0.02em; margin: 14px 0 18px; }
+  .section-lede { font-size: 19px; color: var(--ink-2); max-width: 640px; }
+
+  /* Story */
+  .story { display: grid; grid-template-columns: 1fr 1.25fr; gap: 64px; align-items: start; }
+  .story-body p { margin: 0 0 18px; font-size: 18px; color: var(--ink-2); }
+  .story-body p:first-child::first-letter {
+    font-family: var(--serif); float: left; font-size: 74px; line-height: .8; padding: 6px 10px 0 0; color: var(--ink);
+  }
+  .story-body strong { color: var(--ink); font-weight: 600; }
+  .quote {
+    font-family: var(--serif); font-style: italic; font-size: 28px; line-height: 1.25; color: var(--ink);
+    border-left: 3px solid var(--orange); padding: 4px 0 4px 20px; margin: 28px 0;
+  }
+  .checklist { list-style: none; padding: 0; margin: 26px 0 0; display: grid; gap: 10px; }
+  .checklist li { display: flex; gap: 12px; align-items: flex-start; font-size: 16px; }
+  .checklist .x { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; border: 1.5px solid var(--ink); }
+  .checklist .no { background: var(--pink); }
+  .checklist .yes { background: var(--lilac); }
+
+  /* Numbers band */
+  .band { background: var(--green); color: var(--cream); border-radius: 28px; padding: 64px 48px; }
+  .band .eyebrow { color: #b9d6cf; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; margin-top: 36px; }
+  .stat .num { font-family: var(--serif); font-size: clamp(44px, 5.5vw, 64px); line-height: 1; letter-spacing: -0.02em; }
+  .stat .num small { font-size: .5em; }
+  .stat .label { margin-top: 10px; font-size: 15px; color: #cfe4df; }
+
+  /* How it works */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 44px; }
+  .step { border: 1.5px solid var(--ink); border-radius: var(--radius); padding: 22px; background: #fff; position: relative; }
+  .step .n { font-family: var(--serif); font-style: italic; font-size: 30px; line-height: 1; color: var(--muted); }
+  .step h3 { margin: 14px 0 8px; font-size: 18px; }
+  .step p { margin: 0; font-size: 15px; color: var(--ink-2); }
+  .step:nth-child(1) { background: var(--lilac); }
+  .step:nth-child(3) { background: #FFE6C7; }
+  .learned { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .learned .card { background: var(--sand-2); border-radius: var(--radius); padding: 24px; }
+  .learned h4 { margin: 0 0 10px; font-size: 16px; }
+  .learned ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 15px; }
+  .learned li { margin-bottom: 6px; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .88em; }
+  .learned code { background: rgba(0,0,0,.06); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
+
+  /* Features */
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; }
+  .feature { background: #fff; border: 1.5px solid var(--sand); border-radius: var(--radius); padding: 24px; }
+  .feature .icon { width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center; border: 1.5px solid var(--ink); margin-bottom: 16px; font-size: 19px; }
+  .feature h3 { margin: 0 0 6px; font-size: 18px; }
+  .feature p { margin: 0; font-size: 15px; color: var(--ink-2); }
+
+  /* Cost */
+  .cost-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 48px; align-items: center; }
+  table.cost { width: 100%; border-collapse: separate; border-spacing: 0; background: #fff; border: 1.5px solid var(--ink); border-radius: var(--radius); overflow: hidden; font-size: 15.5px; }
+  table.cost th, table.cost td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--sand); }
+  table.cost tr:last-child td { border-bottom: none; }
+  table.cost thead th { background: var(--sand-2); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+  table.cost td.us { font-weight: 700; }
+  table.cost td.them { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--coral); }
+  .note { font-size: 13.5px; color: var(--muted); margin-top: 12px; }
+
+  /* Handoff */
+  .handoff { background: var(--ink); color: var(--cream); border-radius: 28px; padding: 64px 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+  .handoff .section-title { color: var(--cream); }
+  .handoff p { color: #c9c9b8; font-size: 17px; }
+  .handoff .btn-primary { border-color: var(--lilac); }
+  .handoff .btn-ghost { color: var(--cream); border-color: var(--cream); }
+  .handoff .btn-ghost:hover { background: #2a2a2a; box-shadow: 0 4px 0 var(--cream); }
+  .handoff .btn-primary:hover { box-shadow: 0 4px 0 var(--lilac); }
+  .terminal { min-width: 0; max-width: 100%; background: #0f0f0f; border: 1px solid #333; border-radius: 14px; padding: 20px 22px; font-size: 14px; line-height: 1.75; overflow-x: auto; }
+  .terminal .c { color: #7d7d70; }
+  .terminal .p { color: var(--orange); user-select: none; }
+  .ideas { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .ideas li { border: 1px solid #44443d; border-radius: 999px; padding: 6px 12px; font-size: 14px; color: #e6e6d2; }
+
+  /* FAQ */
+  .faq { max-width: 820px; margin: 40px auto 0; }
+  details { border-bottom: 1.5px solid var(--sand); padding: 6px 0; }
+  summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0; font-size: 19px; font-weight: 500; }
+  summary::-webkit-details-marker { display: none; }
+  summary .plus { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--ink); display: grid; place-items: center; transition: transform .2s ease, background .2s ease; font-size: 18px; }
+  details[open] summary .plus { transform: rotate(45deg); background: var(--lilac); }
+  details p { margin: 0 0 18px; color: var(--ink-2); max-width: 720px; }
+
+  /* Final CTA + footer */
+  .final { text-align: center; padding: 110px 0 90px; }
+  .final h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(46px, 7.5vw, 92px); line-height: .98; letter-spacing: -0.025em; margin: 0 0 26px; }
+  footer { border-top: 1.5px solid var(--sand); padding: 28px 0 40px; font-size: 14px; color: var(--muted); }
+  footer .row { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--ink-2); }
+
+  /* Reveal on scroll (content stays visible without JS) */
+  .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .js .reveal.in { opacity: 1; transform: none; }
+
+  @media (max-width: 900px) {
+    .story, .cost-grid, .handoff { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    .steps { grid-template-columns: 1fr 1fr; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .features { grid-template-columns: 1fr 1fr; }
+    .learned { grid-template-columns: minmax(0, 1fr); }
+    .nav-links a:not(.btn) { display: none; }
+  }
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 16px; }
+    section { padding: 64px 0; }
+    .hero { padding-top: 36px; }
+    .steps, .features { grid-template-columns: minmax(0, 1fr); }
+    .band, .handoff { padding: 40px 22px; border-radius: 22px; }
+    .msg { max-width: 92%; font-size: 14.5px; }
+    .chat { padding: 16px 14px 8px; min-height: 210px; }
+    .composer { margin: 4px 10px 14px; font-size: 15px; }
+    .pill { font-size: 12.5px; padding: 0 14px; }
+    .nav .btn span.long { display: none; }
+    table.cost th, table.cost td { padding: 11px 10px; font-size: 14px; }
+    .quote { font-size: 23px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .js .reveal { opacity: 1; transform: none; transition: none; }
+    .caret { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="banner">An open experiment: can you clone a $15/month app in a day with Claude? <a href="#story">Read the story →</a></div>
+
+<div class="nav-shell">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="logo" href="#top" aria-label="FlowClone home">
+        <span class="logo-mark" aria-hidden="true"><i style="height:9px"></i><i style="height:15px"></i><i style="height:20px"></i><i style="height:12px"></i></span>
+        FlowClone
+      </a>
+      <div class="nav-links">
+        <a href="#story">Story</a>
+        <a href="#how">How it works</a>
+        <a href="#cost">Cost</a>
+        <a href="#faq">FAQ</a>
+        <a href="#" data-link="github">GitHub</a>
+        <a class="btn btn-primary" href="#" data-link="download">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.62c-.02-2.35 1.92-3.48 2-3.54-1.09-1.6-2.79-1.82-3.4-1.84-1.45-.15-2.82.85-3.56.85-.73 0-1.86-.83-3.06-.81-1.58.02-3.03.92-3.84 2.33-1.64 2.84-.42 7.04 1.18 9.34.78 1.13 1.71 2.4 2.93 2.35 1.18-.05 1.62-.76 3.04-.76 1.42 0 1.82.76 3.06.74 1.27-.02 2.07-1.15 2.84-2.28.9-1.31 1.27-2.58 1.29-2.65-.03-.01-2.47-.95-2.48-3.73zM14.03 5.72c.65-.79 1.09-1.88.97-2.97-.94.04-2.07.62-2.74 1.41-.6.7-1.13 1.81-.99 2.88 1.05.08 2.12-.53 2.76-1.32z"/></svg>
+          <span>Download <span class="long">for macOS</span></span>
+        </a>
+      </div>
+    </nav>
+  </div>
+</div>
+
+<main id="top">
+  <!-- Hero -->
+  <header class="hero">
+    <div class="wrap">
+      <div class="eyebrow">Open-source dictation for Mac</div>
+      <h1>Speak it.<em>Don't pay for it.</em></h1>
+      <p class="lede">A Wispr Flow–style dictation app I rebuilt with Claude. Hold <strong>Fn</strong>, talk in any mix of English, Hindi and Bengali, and clean text lands wherever your cursor is. Transcribed in the cloud with your own OpenRouter key.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#" data-link="download">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.37 12.62c-.02-2.35 1.92-3.48 2-3.54-1.09-1.6-2.79-1.82-3.4-1.84-1.45-.15-2.82.85-3.56.85-.73 0-1.86-.83-3.06-.81-1.58.02-3.03.92-3.84 2.33-1.64 2.84-.42 7.04 1.18 9.34.78 1.13 1.71 2.4 2.93 2.35 1.18-.05 1.62-.76 3.04-.76 1.42 0 1.82.76 3.06.74 1.27-.02 2.07-1.15 2.84-2.28.9-1.31 1.27-2.58 1.29-2.65-.03-.01-2.47-.95-2.48-3.73zM14.03 5.72c.65-.79 1.09-1.88.97-2.97-.94.04-2.07.62-2.74 1.41-.6.7-1.13 1.81-.99 2.88 1.05.08 2.12-.53 2.76-1.32z"/></svg>
+          Download for macOS
+        </a>
+        <a class="btn btn-ghost" href="#" data-link="github">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.39c.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.33-1.76-1.33-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.66.25 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.62-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58A12 12 0 0 0 12 .5z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+      <div class="fineprint">Free &amp; open source · macOS 14+ · bring your own OpenRouter key</div>
+
+      <!-- Live demo -->
+      <div class="demo" aria-label="Animated demo: dictating a mixed-language message into a chat app">
+        <div class="window">
+          <div class="window-bar"><span></span><span></span><span></span><b>Messages — Riya</b></div>
+          <div class="chat">
+            <div class="msg them">Kal ka plan kya hai? Are you coming home?</div>
+            <div class="msg me" id="sent" hidden></div>
+          </div>
+          <div class="composer" aria-live="polite"><span id="typed"><span class="placeholder">Hold Fn and speak…</span></span><span class="caret" id="caret"></span>
+            <div class="lang-tag" id="langtag">&nbsp;</div>
+          </div>
+        </div>
+        <div class="pill hidden" id="pill" aria-hidden="true">
+          <div class="bars" id="bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <span class="check">✓</span>
+          <span id="pilltext">Listening</span>
+        </div>
+      </div>
+      <div class="hold-hint"><span class="keycap">fn</span> hold to talk · <span class="keycap">fn</span><span class="keycap">fn</span> hands-free · <span class="keycap">esc</span> cancel</div>
+    </div>
+  </header>
+
+  <!-- Story -->
+  <section id="story">
+    <div class="wrap story">
+      <div class="reveal">
+        <div class="eyebrow">Why this exists</div>
+        <h2 class="section-title">I loved Wispr Flow. <em>I just didn't want to pay for it.</em></h2>
+        <ul class="checklist">
+          <li><span class="x no">✕</span><span>Local open-source apps: they run the model on your Mac and eat RAM, battery and fans.</span></li>
+          <li><span class="x no">✕</span><span>A monthly subscription for something I suspected I could build myself.</span></li>
+          <li><span class="x yes">✓</span><span>Cloud transcription that's fast, cheap, and runs on a key I control.</span></li>
+        </ul>
+      </div>
+      <div class="story-body reveal">
+        <p>Wispr Flow changed how I write. You hold a key, talk the way you think, and polished text appears in whatever app you're in. But in the back of my head I kept thinking: <strong>this is achievable. This can be coded.</strong></p>
+        <p>There are open-source dictation apps, and there are open-source speech models. I never liked them, because they run on your own machine and take resources away from everything else. I wanted transcription in the cloud, quick and fast enough that I'd stop noticing it.</p>
+        <p>I knew <strong>OpenRouter</strong> had added a long list of transcription models behind one API. So I ran an experiment: take Claude, take the Wispr Flow app installed on my Mac, decompile it to understand how it actually works, then rebuild the parts I use every day.</p>
+        <div class="quote">It worked. I've been dictating this project into itself ever since.</div>
+        <p>I speak a mix of English, Hindi and Bengali, often in the same sentence. So I benchmarked the models on my own voice and picked the one that writes all of it back in Roman script, the way I'd actually type it. What you get here is the result: a native macOS app, about 4,000 lines of Swift, built in a day. <strong>Now it's yours.</strong></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Numbers -->
+  <section style="padding-top:0">
+    <div class="wrap">
+      <div class="band reveal">
+        <div class="eyebrow">Measured, not promised</div>
+        <h2 class="section-title" style="color:var(--cream);margin-bottom:0">Small app, <em>fast cloud.</em></h2>
+        <div class="stats">
+          <div class="stat"><div class="num">~2<small>s</small></div><div class="label">from releasing Fn to text in your app, for a 12-second dictation</div></div>
+          <div class="stat"><div class="num">&lt;$2</div><div class="label">a month for heavy daily use (5,000 words a day) with Gemini 3.5 Flash-Lite</div></div>
+          <div class="stat"><div class="num">34<small>MB</small></div><div class="label">memory while idle, 0% CPU. The mic is off until you press Fn.</div></div>
+          <div class="stat"><div class="num">3</div><div class="label">languages in one sentence, written back in Roman script</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how" style="padding-top:0">
+    <div class="wrap">
+      <div class="reveal">
+        <div class="eyebrow">How it works</div>
+        <h2 class="section-title">One key. <em>One API call.</em></h2>
+        <p class="section-lede">Wispr Flow streams audio to its own servers, where one model transcribes and a second cleans up. FlowClone collapses both into a single request to an audio-capable model.</p>
+      </div>
+      <div class="steps">
+        <div class="step reveal"><div class="n">01</div><h3>Hold Fn</h3><p>A native Swift helper catches the key and reads the app you're in and the text before your cursor.</p></div>
+        <div class="step reveal"><div class="n">02</div><h3>Speak</h3><p>16 kHz mono audio from your mic, compressed to a small m4a file. Other audio is muted while you talk.</p></div>
+        <div class="step reveal"><div class="n">03</div><h3>One call</h3><p>OpenRouter → Gemini 3.5 Flash-Lite transcribes, romanizes Hindi and Bengali, removes "um"s and applies self-corrections.</p></div>
+        <div class="step reveal"><div class="n">04</div><h3>It types</h3><p>Pasted at your cursor in any app, and your clipboard is restored. If the paste fails, the text stays on the clipboard.</p></div>
+      </div>
+      <div class="learned">
+        <div class="card reveal">
+          <h4>What decompiling Wispr Flow taught me</h4>
+          <ul>
+            <li>It's an Electron app plus a native Swift helper for the hotkey, Accessibility and pasting.</li>
+            <li>Audio goes out as Opus over a two-way gRPC stream, <code>TranscriptionService/TranscribeStream</code>.</li>
+            <li>The secret sauce is <em>context</em>: cursor text, app, on-screen words and your dictionary all go to the formatter.</li>
+          </ul>
+        </div>
+        <div class="card reveal">
+          <h4>What FlowClone does differently</h4>
+          <ul>
+            <li>Pure native Swift and SwiftUI. No bundled Chromium, so it uses a fraction of the memory.</li>
+            <li>Cloud only, through <em>your</em> OpenRouter key. Swap in any of 25+ transcription models.</li>
+            <li>History, dictionary and snippets stay in plain files on your Mac.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section style="padding-top:0">
+    <div class="wrap">
+      <div class="reveal">
+        <div class="eyebrow">What's in the box</div>
+        <h2 class="section-title">The parts of Flow <em>I actually use.</em></h2>
+      </div>
+      <div class="features">
+        <div class="feature reveal"><div class="icon" style="background:var(--lilac)">🎙</div><h3>Hold or hands-free</h3><p>Hold Fn to talk, double-tap for hands-free, Esc to cancel. ⌃⌥V pastes the last transcript again.</p></div>
+        <div class="feature reveal"><div class="icon" style="background:#FFE6C7">अ</div><h3>Hinglish &amp; Banglish</h3><p>"kal meeting hai, let's do it after lunch": mixed languages come back in Roman script, never translated.</p></div>
+        <div class="feature reveal"><div class="icon" style="background:var(--pink)">📖</div><h3>Dictionary &amp; snippets</h3><p>Names spelled right every time. Say "my email" and your full address gets typed.</p></div>
+        <div class="feature reveal"><div class="icon" style="background:#D6F0E8">Aa</div><h3>Per-app style</h3><p>Formal in Mail, casual in Slack, all-lowercase in WhatsApp. Pick it once per type of app.</p></div>
+        <div class="feature reveal"><div class="icon" style="background:var(--sand-2)">⌂</div><h3>A real home</h3><p>A Hub window with your words, speaking speed, streak, monthly cost and searchable history with retry.</p></div>
+        <div class="feature reveal"><div class="icon" style="background:var(--lilac)">✦</div><h3>Feels finished</h3><p>Animated pill, sounds, mic picker, AirPods hand-off, launch at login and a setup guide.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cost -->
+  <section id="cost" style="padding-top:0">
+    <div class="wrap cost-grid">
+      <div class="reveal">
+        <div class="eyebrow">The economics</div>
+        <h2 class="section-title">Pay for what you say, <em>not per month.</em></h2>
+        <p class="section-lede">You pay OpenRouter per second of audio, directly. At typical speaking speeds even heavy use costs a few dollars a month, so the subscription would only make sense past about four hours of talking every working day.</p>
+      </div>
+      <div class="reveal">
+        <table class="cost">
+          <thead><tr><th>Words / workday</th><th>FlowClone</th><th>Subscription</th></tr></thead>
+          <tbody>
+            <tr><td>1,000 · light</td><td class="us">$0.31/mo</td><td class="them">$12–15/mo</td></tr>
+            <tr><td>2,000</td><td class="us">$0.62/mo</td><td class="them">$12–15/mo</td></tr>
+            <tr><td>5,000 · heavy</td><td class="us">$1.55/mo</td><td class="them">$12–15/mo</td></tr>
+            <tr><td>10,000 · all day</td><td class="us">$3.10/mo</td><td class="them">$12–15/mo</td></tr>
+          </tbody>
+        </table>
+        <p class="note">Measured with Gemini 3.5 Flash-Lite on OpenRouter in Oct 2026: 140 wpm, 22 workdays, context tokens and fees included. Prices change; your usage shows live in the Hub.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Handoff -->
+  <section id="build" style="padding-top:0">
+    <div class="wrap">
+      <div class="handoff reveal">
+        <div>
+          <div class="eyebrow" style="color:#a9a996">Your turn</div>
+          <h2 class="section-title">Take it. <em>Make it yours.</em></h2>
+          <p>This started as an experiment and it's done its job. The code, the decompilation notes, the language benchmarks and the roadmap are all in the repo. Fork it, rebuild it, rename it, rip out what you don't need. No sign-up, no telemetry, no server of mine in the middle.</p>
+          <div class="cta-row" style="justify-content:flex-start">
+            <a class="btn btn-primary" href="#" data-link="github">Fork on GitHub</a>
+            <a class="btn btn-ghost" href="#" data-link="download">Download the app</a>
+          </div>
+          <ul class="ideas" aria-label="Ideas to build next">
+            <li>Windows port</li><li>Command mode</li><li>Learn from your edits</li><li>Stream while speaking</li><li>Your language</li>
+          </ul>
+        </div>
+        <pre class="terminal" aria-label="Build from source"><span class="c"># build it yourself (macOS 14+, Xcode CLI tools)</span>
+<span class="p">$ </span><span class="mono" data-text="clone">git clone https://github.com/Shiladitya070/flowclone</span>
+<span class="p">$ </span>cd flowclone
+<span class="p">$ </span>echo "OPENROUTER_API_KEY=sk-or-..." &gt; .env
+<span class="p">$ </span>mac/install.sh
+
+<span class="c"># iterate: rebuild + run with live logs</span>
+<span class="p">$ </span>mac/dev.sh
+
+<span class="c"># test prompts and models without speaking</span>
+<span class="p">$ </span>MODEL=google/gemini-3.5-flash \
+    FlowClone --transcribe clips/</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" style="padding-top:0">
+    <div class="wrap">
+      <div class="reveal" style="text-align:center">
+        <div class="eyebrow">FAQ</div>
+        <h2 class="section-title">Good <em>questions.</em></h2>
+      </div>
+      <div class="faq">
+        <details><summary>Is this Wispr Flow?<span class="plus">+</span></summary><p>No. FlowClone is an independent, unofficial experiment inspired by Wispr Flow. It isn't affiliated with or endorsed by Wispr, and it shares no code with Wispr Flow. If you want the polished product with mobile apps, a notetaker and support, go buy Wispr Flow. It's great.</p></details>
+        <details><summary>Is it really free?<span class="plus">+</span></summary><p>The app is free and open source. Transcription runs on your own OpenRouter account, billed per second of audio, typically $0.30–$3 a month. You can see your running cost in the Hub.</p></details>
+        <details><summary>Why cloud and not a local model?<span class="plus">+</span></summary><p>Local models are private and free per use, but they keep gigabytes in memory and hit your CPU or GPU every time you speak. FlowClone idles at about 34 MB and 0% CPU, and only uses the network while you're dictating. If you prefer local, the transcriber is a single file to swap out.</p></details>
+        <details><summary>Where does my voice go?<span class="plus">+</span></summary><p>From your Mac to OpenRouter, which routes it to the model provider (Google, for the default model). Nothing goes to me. History, recordings, your dictionary and snippets stay in <code>~/Library/Application Support/FlowClone</code>. You can stop sending cursor context, or stop keeping audio, in Settings.</p></details>
+        <details><summary>macOS says the app "can't be opened". What now?<span class="plus">+</span></summary><p>The download isn't notarized by Apple (that needs a paid developer account). Right-click FlowClone in Applications and choose <strong>Open</strong>, or go to System Settings › Privacy &amp; Security › <strong>Open Anyway</strong>. If you'd rather not trust a download, build it from source in two commands.</p></details>
+        <details><summary>Which languages work?<span class="plus">+</span></summary><p>The default prompt is tuned for English mixed with Hindi and Bengali, written back in Roman script. The underlying model handles dozens of languages. Edit the prompt (no rebuild needed) or swap the model to fit how you speak.</p></details>
+        <details><summary>Windows? iPhone?<span class="plus">+</span></summary><p>Not yet. It's macOS only, and that's the fun part for whoever forks it next. The transcription side is a single HTTPS call, so the hard part of a port is the hotkey and the pasting.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="final">
+    <div class="wrap reveal">
+      <h2>Your voice. Your key.<br><em>Your app.</em></h2>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#" data-link="download">Download for macOS</a>
+        <a class="btn btn-ghost" href="#" data-link="github">Star on GitHub</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span>FlowClone · an experiment built with <a href="https://claude.com/claude-code">Claude Code</a> · <a href="#" data-link="github">source on GitHub</a></span>
+    <span>Not affiliated with Wispr. "Wispr Flow" is a trademark of its owner.</span>
+  </div>
+</footer>
+
+<script>
+  /* ── Set these two before publishing ─────────────────────────────── */
+  const GITHUB_REPO = "https://github.com/Shiladitya070/flowclone";
+  const DOWNLOAD_URL = GITHUB_REPO + "/releases/latest/download/FlowClone.zip";
+  /* ────────────────────────────────────────────────────────────────── */
+
+  document.documentElement.classList.add("js");
+  document.querySelectorAll('[data-link="github"]').forEach(a => a.href = GITHUB_REPO);
+  document.querySelectorAll('[data-link="download"]').forEach(a => a.href = DOWNLOAD_URL);
+  const clone = document.querySelector('[data-text="clone"]');
+  if (clone) clone.textContent = "git clone " + GITHUB_REPO;
+
+  // Reveal sections as they scroll into view.
+  const io = "IntersectionObserver" in window ? new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+  }, { threshold: 0.12 }) : null;
+  document.querySelectorAll(".reveal").forEach(el => io ? io.observe(el) : el.classList.add("in"));
+
+  // Hero demo: real outputs from the author's own dictations.
+  const samples = [
+    { text: "Yo, I was thinking ki kal ke baadi jabo. Baadi giye proper khawa-dawa hok.", tag: "English + Hindi + Bengali · 2.1 s" },
+    { text: "Honestly mujhe lagta hai ki we should launch on Thursday. Friday is too risky.", tag: "Hinglish · 2.2 s" },
+    { text: "Bhai, the deployment is done. Ab tum log testing start kar sakte ho.", tag: "Hinglish · 2.0 s" },
+  ];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const pill = document.getElementById("pill"), pillText = document.getElementById("pilltext");
+  const bars = [...document.querySelectorAll("#bars i")];
+  const typed = document.getElementById("typed"), tag = document.getElementById("langtag"), sent = document.getElementById("sent");
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  let mode = "idle";
+
+  (function animateBars(t) {
+    const shape = [.35, .55, .75, .9, 1, .9, .75, .55, .35];
+    bars.forEach((b, i) => {
+      let h = 4;
+      if (mode === "listen") h = 4 + 18 * shape[i] * (0.45 + 0.55 * Math.abs(Math.sin(t / 140 + i * 1.3) * Math.sin(t / 370 + i)));
+      if (mode === "think") h = 4 + 7 * (0.5 + 0.5 * Math.sin(t / 120 - i * 0.7));
+      b.style.height = h.toFixed(1) + "px";
+    });
+    requestAnimationFrame(animateBars);
+  })(0);
+
+  async function loop() {
+    if (reduce) {
+      typed.textContent = samples[0].text; tag.textContent = samples[0].tag; return;
+    }
+    for (let i = 0; ; i = (i + 1) % samples.length) {
+      const s = samples[i];
+      typed.innerHTML = '<span class="placeholder">Hold Fn and speak…</span>'; tag.innerHTML = "&nbsp;";
+      await wait(900);
+      mode = "listen"; pill.classList.remove("hidden", "done"); pillText.textContent = "Listening";
+      await wait(2600);
+      mode = "think"; pillText.textContent = "Transcribing";
+      await wait(1100);
+      mode = "idle"; pill.classList.add("done"); pillText.textContent = "Done";
+      typed.textContent = "";
+      for (const word of s.text.split(" ")) { typed.textContent += (typed.textContent ? " " : "") + word; await wait(28); }
+      tag.textContent = s.tag;
+      await wait(500); pill.classList.add("hidden");
+      await wait(2600);
+      sent.textContent = s.text; sent.hidden = false;
+      typed.innerHTML = '<span class="placeholder">Hold Fn and speak…</span>'; tag.innerHTML = "&nbsp;";
+      await wait(2200); sent.hidden = true;
+    }
+  }
+  loop();
+</script>
+</body>
+</html>

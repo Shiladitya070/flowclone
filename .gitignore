@@ -2,3 +2,4 @@
 clips/
 mac/build/
 .DS_Store
+dist/
