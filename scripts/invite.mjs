@@ -17,8 +17,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const INSTALLER = "https://raw.githubusercontent.com/Shiladitya070/flowclone/main/site/install.sh";
-const SITE = "https://github.com/Shiladitya070/flowclone";
+const INSTALLER = "https://shiladitya070.github.io/flowclone/install.sh";
+const SITE = "https://shiladitya070.github.io/flowclone/";
 const PREFIX = "FlowClone · ";
 const API = "https://openrouter.ai/api/v1/keys";
 

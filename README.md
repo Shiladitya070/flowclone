@@ -20,7 +20,7 @@ It's done its job as an experiment. **Take it, rebuild it, make it yours.**
 One line in Terminal (no "can't be opened" warning):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Shiladitya070/flowclone/main/site/install.sh | bash
+curl -fsSL https://shiladitya070.github.io/flowclone/install.sh | bash
 ```
 
 Or download `FlowClone.zip` from [Releases](../../releases/latest), move the app to Applications, and use System Settings › Privacy & Security › **Open Anyway**. The Setup Guide then asks for Microphone and Accessibility access and your OpenRouter API key. Recommended: System Settings › Keyboard › "Press 🌐 key to" → **Do Nothing**.

@@ -1,7 +1,7 @@
 #!/bin/bash
 # FlowClone installer for macOS.
 #
-#   curl -fsSL https://raw.githubusercontent.com/Shiladitya070/flowclone/main/site/install.sh | bash
+#   curl -fsSL https://shiladitya070.github.io/flowclone/install.sh | bash
 #   curl -fsSL …/install.sh | bash -s -- sk-or-v1-…     # also sets up an invite key
 #
 # Downloads the latest release, installs it to /Applications (or ~/Applications), saves the
