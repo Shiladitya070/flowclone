@@ -91,9 +91,16 @@ final class Overlay {
         autoHide?.cancel()
         autoHide = nil
         generation += 1
-        if isShown {
+        // macOS can order the panel out behind our back (e.g. ⌘H hides the whole app, panels
+        // included), so trust the window's real visibility, not just our own flag.
+        if NSApp.isHidden {
+            Log.d("overlay: app was hidden, unhiding")
+            NSApp.unhideWithoutActivation()
+        }
+        if isShown && panel.isVisible {
             pill.apply(mode, text: text, animated: true)
         } else {
+            if isShown { Log.d("overlay: panel was ordered out while shown; re-presenting") }
             isShown = true
             positionPanel()
             pill.apply(mode, text: text, animated: false)
@@ -113,10 +120,17 @@ final class Overlay {
     /// Centres the panel horizontally on the screen under the mouse, just above the Dock.
     private func positionPanel() {
         let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
-        guard let f = screen?.visibleFrame else { return }
-        panel.setFrame(NSRect(x: f.midX - Overlay.panelWidth / 2, y: f.minY + Overlay.bottomInset,
-                              width: Overlay.panelWidth, height: Overlay.pillHeight), display: true)
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) }
+            ?? NSScreen.main ?? NSScreen.screens.first
+        guard let f = screen?.visibleFrame, !f.isEmpty else { return }
+        var frame = NSRect(x: f.midX - Overlay.panelWidth / 2, y: f.minY + Overlay.bottomInset,
+                           width: Overlay.panelWidth, height: Overlay.pillHeight)
+        // Keep the whole strip inside the visible area of that screen.
+        frame.origin.x = min(max(frame.minX, f.minX), max(f.minX, f.maxX - frame.width))
+        frame.origin.y = min(max(frame.minY, f.minY), f.maxY - frame.height)
+        panel.setFrame(frame, display: true)
+        Log.d(String(format: "overlay at x=%.0f y=%.0f on screen %.0fx%.0f",
+                     frame.minX, frame.minY, f.width, f.height))
     }
 
     /// Drives the waveform at 60 fps. Runs only while the overlay is visible.
