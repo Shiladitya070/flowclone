@@ -15,6 +15,7 @@ final class Overlay {
     private let panel: NSPanel
     private let pill = PillView(frame: .zero)
     private var timer: Timer?
+    private var ticks = 0
     private var autoHide: DispatchWorkItem?
     /// Bumped on every show or hide, so a fade that finishes late can tell it was superseded.
     private var generation = 0
@@ -97,11 +98,21 @@ final class Overlay {
             Log.d("overlay: app was hidden, unhiding")
             NSApp.unhideWithoutActivation()
         }
-        if isShown && panel.isVisible {
+        // "Visible" isn't enough: after ⌘Tab / Space switches the panel can still count as visible
+        // while sitting on a Space you're not looking at, or the pill can be left transparent.
+        let onActiveSpace = panel.isOnActiveSpace
+        let opacity = pill.layer?.presentation()?.opacity ?? pill.layer?.opacity ?? 0
+        let reallyShowing = panel.isVisible && onActiveSpace && opacity > 0.05
+        Log.d(String(format: "overlay present: shown=%d visible=%d activeSpace=%d opacity=%.2f",
+                     isShown ? 1 : 0, panel.isVisible ? 1 : 0, onActiveSpace ? 1 : 0, opacity))
+        if isShown && reallyShowing {
             pill.apply(mode, text: text, animated: true)
         } else {
-            if isShown { Log.d("overlay: panel was ordered out while shown; re-presenting") }
+            if isShown { Log.d("overlay: not actually on screen; re-presenting on the current Space") }
             isShown = true
+            ticks = 0 // give the pop-in animation time before the watchdog's first check
+            // Ordering out first makes the re-order-in land on the Space you're looking at now.
+            panel.orderOut(nil)
             positionPanel()
             pill.apply(mode, text: text, animated: false)
             pill.popIn()
@@ -139,9 +150,31 @@ final class Overlay {
         let t = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             self.pill.tick(level: self.level, time: CACurrentMediaTime())
+            self.ticks += 1
+            if self.ticks % 30 == 0 { self.ensureOnScreen() }
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
+    }
+
+    /// Watchdog, ~2×/s while the pill is up: macOS can move the panel, strand it on another Space,
+    /// or order it out (⌘Tab, Space switches, app hiding). Put it back instead of waiting for the
+    /// next key press.
+    private func ensureOnScreen() {
+        guard isShown else { return }
+        let opacity = pill.layer?.presentation()?.opacity ?? pill.layer?.opacity ?? 0
+        let inside = NSScreen.screens.contains { $0.visibleFrame.insetBy(dx: -1, dy: -1).contains(panel.frame) }
+        let problems = [panel.isVisible ? nil : "ordered out",
+                        panel.isOnActiveSpace ? nil : "other Space",
+                        inside ? nil : String(format: "off-screen at x=%.0f y=%.0f", panel.frame.minX, panel.frame.minY),
+                        opacity > 0.05 ? nil : "transparent"].compactMap { $0 }
+        guard !problems.isEmpty else { return }
+        Log.d("overlay watchdog: \(problems.joined(separator: ", ")); restoring")
+        if NSApp.isHidden { NSApp.unhideWithoutActivation() }
+        panel.orderOut(nil)
+        positionPanel()
+        if opacity <= 0.05 { pill.popIn() }
+        panel.orderFrontRegardless()
     }
 
     private func stopTimer() {
