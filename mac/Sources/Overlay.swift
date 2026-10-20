@@ -33,13 +33,22 @@ final class Overlay {
         panel.ignoresMouseEvents = true
         panel.hidesOnDeactivate = false
         panel.animationBehavior = .none
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        panel.collectionBehavior = Overlay.spaces
 
         let container = NSView(frame: NSRect(origin: .zero, size: size))
         container.wantsLayer = true
         container.addSubview(pill)
         panel.contentView = container
+
+        // Re-check as soon as the Space changes (⌘Tab to a full-screen app or another desktop),
+        // rather than waiting for the watchdog tick.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.ensureOnScreen() }
     }
+
+    /// Float above every Space, including full-screen apps, and stay put during Space switches.
+    private static let spaces: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
 
     // MARK: States
 
@@ -113,6 +122,7 @@ final class Overlay {
             ticks = 0 // give the pop-in animation time before the watchdog's first check
             // Ordering out first makes the re-order-in land on the Space you're looking at now.
             panel.orderOut(nil)
+            panel.collectionBehavior = Overlay.spaces // can be dropped when the activation policy flips
             positionPanel()
             pill.apply(mode, text: text, animated: false)
             pill.popIn()
@@ -172,6 +182,7 @@ final class Overlay {
         Log.d("overlay watchdog: \(problems.joined(separator: ", ")); restoring")
         if NSApp.isHidden { NSApp.unhideWithoutActivation() }
         panel.orderOut(nil)
+        panel.collectionBehavior = Overlay.spaces
         positionPanel()
         if opacity <= 0.05 { pill.popIn() }
         panel.orderFrontRegardless()
